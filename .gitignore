@@ -28,6 +28,9 @@ Thumbs.db
 *.log
 logs/
 
+# Private planning documents
+QUICK_START_GUIDE.md
+
 # Database
 *.db
 *.sqlite
