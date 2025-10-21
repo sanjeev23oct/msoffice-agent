@@ -4,19 +4,23 @@
 
 **Product Name:** IntelliMail AI (or your preferred name)
 
-**Tagline:** "Your AI-Powered Outlook & OneNote Assistant - Never Miss What Matters"
+**Tagline:** "Your AI-Powered Email & Meeting Assistant - Works with Outlook & Gmail"
 
 **Target Market:** 
 - Busy professionals managing 50+ emails daily
 - Sales teams tracking client communications
 - Executives needing meeting preparation
-- Knowledge workers with extensive OneNote libraries
+- Knowledge workers with extensive note libraries (OneNote, Google Keep, Notion)
+- Freelancers and consultants juggling multiple clients
+- Small business owners without enterprise budgets
 
 **Value Proposition:**
 - Save 2+ hours daily on email management
 - Never miss important emails or follow-ups
 - Get AI-powered meeting briefs automatically
-- Connect emails with your OneNote knowledge base
+- Connect emails with your notes (OneNote, Google Keep, Notion)
+- **Works with both Outlook AND Gmail** (coming soon)
+- Affordable alternative to enterprise AI tools
 
 ---
 
@@ -158,7 +162,13 @@
 
 **Tasks:**
 1. **Feature Expansion**
-   - [ ] Gmail integration (expand beyond Outlook)
+   - [ ] **Gmail integration** ⭐⭐ (expand beyond Outlook)
+     - [ ] Google OAuth authentication
+     - [ ] Gmail API integration (read, search, labels)
+     - [ ] Google Calendar integration
+     - [ ] Google Keep/Docs integration (note linking)
+     - [ ] Unified inbox (Outlook + Gmail in one app)
+   - [ ] **Multi-account support** (multiple Outlook + Gmail accounts)
    - [ ] Mobile companion app
    - [ ] Slack/Teams integration
    - [ ] Email automation workflows
@@ -191,12 +201,15 @@
 
 | Feature | Free | Pro ($9.99/mo) | Team ($19.99/user/mo) |
 |---------|------|----------------|----------------------|
+| **Email Providers** | Outlook OR Gmail | Outlook + Gmail | Outlook + Gmail |
+| **Accounts** | 1 account | 3 accounts | Unlimited |
 | Emails analyzed/month | 100 | Unlimited | Unlimited |
 | Meeting briefs | 5/month | Unlimited | Unlimited |
 | Priority classification | ✅ | ✅ | ✅ |
 | AI insights | Basic | Advanced | Advanced |
 | Custom rules | ❌ | ✅ | ✅ |
 | Email templates | ❌ | ✅ | ✅ |
+| **Note Integration** | OneNote only | OneNote + Google Docs | OneNote + Google Docs + Notion |
 | Team analytics | ❌ | ❌ | ✅ |
 | Priority support | ❌ | ✅ | ✅ |
 
@@ -244,6 +257,211 @@
 - [ ] Set up auto-update system
 - [ ] Add telemetry (privacy-respecting)
 
+---
+
+## 📧 Gmail Integration Roadmap
+
+### Why Gmail Integration is Critical:
+
+**Market Size:**
+- **1.8 billion Gmail users** worldwide
+- **400 million Outlook users** (personal + enterprise)
+- **Total addressable market: 2.2 billion users**
+
+**User Demand:**
+- Many professionals use both Outlook (work) and Gmail (personal)
+- Freelancers often use Gmail
+- Startups prefer Google Workspace over Microsoft 365
+
+**Competitive Advantage:**
+- Most competitors focus on ONE platform
+- You'll support BOTH Outlook + Gmail
+- Unified experience across email providers
+
+---
+
+### Gmail Integration Plan (Months 4-6):
+
+#### Phase 1: Gmail Read Access (Month 4)
+**Goal:** Read and analyze Gmail emails
+
+**Tasks:**
+- [ ] Set up Google Cloud Project
+- [ ] Configure OAuth 2.0 for Gmail API
+- [ ] Implement Google authentication flow
+- [ ] Create Gmail service (similar to EmailService)
+- [ ] Implement Gmail API integration:
+  - [ ] Read messages (`gmail.users.messages.list`)
+  - [ ] Get message details (`gmail.users.messages.get`)
+  - [ ] Search emails (`q` parameter)
+  - [ ] Get labels and categories
+- [ ] Add Gmail email caching
+- [ ] Implement delta sync for Gmail
+- [ ] Test with personal Gmail accounts
+
+**Technical Notes:**
+- Use `@googleapis/gmail` npm package
+- OAuth scopes needed: `gmail.readonly`, `gmail.labels`
+- Similar architecture to Microsoft Graph integration
+
+---
+
+#### Phase 2: Google Calendar Integration (Month 5)
+**Goal:** Meeting briefs for Google Calendar
+
+**Tasks:**
+- [ ] Implement Google Calendar API integration
+- [ ] Read upcoming meetings (`calendar.events.list`)
+- [ ] Get meeting details and attendees
+- [ ] Generate meeting briefs for Google Calendar
+- [ ] Support both Outlook + Google Calendar
+
+**OAuth Scopes:**
+- `calendar.readonly`
+- `calendar.events.readonly`
+
+---
+
+#### Phase 3: Google Keep/Docs Integration (Month 5-6)
+**Goal:** Note linking for Gmail users
+
+**Tasks:**
+- [ ] Research Google Keep API (limited public API)
+- [ ] Alternative: Google Docs API for note storage
+- [ ] Implement note search and retrieval
+- [ ] Link Gmail emails with Google Docs/Keep
+- [ ] Support both OneNote + Google Docs
+
+**OAuth Scopes:**
+- `drive.readonly` (for Google Docs)
+- Google Keep has limited API - may need workarounds
+
+---
+
+#### Phase 4: Unified Experience (Month 6)
+**Goal:** Seamless multi-provider support
+
+**Tasks:**
+- [ ] Unified inbox (Outlook + Gmail together)
+- [ ] Multi-account support (multiple Gmail + Outlook accounts)
+- [ ] Account switcher in UI
+- [ ] Unified priority classification across providers
+- [ ] Cross-provider search
+- [ ] Settings per account
+
+**UI Changes:**
+- Account selector dropdown
+- Provider icons (Outlook/Gmail badges)
+- Unified priority inbox
+- Per-account settings
+
+---
+
+### Gmail Integration Architecture:
+
+```
+src/services/
+├── email-service.ts (Outlook - existing)
+├── gmail-service.ts (NEW - Gmail)
+├── email-provider-manager.ts (NEW - abstraction layer)
+├── calendar-service.ts (Outlook - existing)
+├── google-calendar-service.ts (NEW - Google Calendar)
+├── notes-service.ts (OneNote - existing)
+└── google-docs-service.ts (NEW - Google Docs)
+```
+
+**Abstraction Layer:**
+- Create `IEmailProvider` interface
+- Both `EmailService` and `GmailService` implement it
+- `EmailProviderManager` handles multiple accounts
+- Agent Core works with abstraction, not specific providers
+
+---
+
+### Gmail API Comparison:
+
+| Feature | Microsoft Graph | Gmail API | Implementation |
+|---------|----------------|-----------|----------------|
+| **Authentication** | MSAL + Device Code | Google OAuth | Similar flow |
+| **Read Emails** | `/me/messages` | `users.messages.list` | Same concept |
+| **Search** | `$filter` | `q` parameter | Different syntax |
+| **Delta Sync** | Delta queries | History API | Different approach |
+| **Labels** | Categories | Labels | Map concepts |
+| **Attachments** | `/attachments` | `parts` in message | Different structure |
+
+---
+
+### Revenue Impact of Gmail Integration:
+
+**Current TAM (Outlook only):** 400M users
+**With Gmail:** 2.2B users (5.5x larger market!)
+
+**Projected Impact:**
+- **Month 6 (Outlook only):** 1,000 users, $800 MRR
+- **Month 9 (+ Gmail):** 2,500 users, $2,000 MRR (2.5x growth)
+- **Month 12:** 5,000 users, $5,000 MRR
+
+**Why Gmail Users Will Pay:**
+- No good AI email assistant for Gmail (Superhuman is $30/mo)
+- Gmail AI is basic (just smart compose)
+- Your advanced features (meeting briefs, note linking) are unique
+
+---
+
+### Marketing Angle After Gmail Integration:
+
+**Before:** "AI Email Assistant for Outlook"
+**After:** "AI Email Assistant for Outlook & Gmail - The Only Tool That Works with Both"
+
+**New Positioning:**
+- "Use Outlook for work and Gmail for personal? We've got you covered."
+- "The only AI assistant that works with both Microsoft and Google"
+- "Unified AI intelligence across all your email accounts"
+
+---
+
+### Gmail Integration Risks & Mitigation:
+
+**Risk 1: Google API Complexity**
+- **Mitigation:** Start with read-only, iterate
+- Gmail API is well-documented
+- Large developer community
+
+**Risk 2: OAuth Verification**
+- **Mitigation:** Google requires OAuth verification for sensitive scopes
+- Plan 2-4 weeks for verification process
+- Prepare privacy policy and demo video
+
+**Risk 3: API Costs**
+- **Mitigation:** Gmail API is free up to generous limits
+- 1 billion quota units/day (enough for 10,000+ users)
+- Monitor usage, optimize queries
+
+**Risk 4: Feature Parity**
+- **Mitigation:** Start with core features (read, search, priority)
+- Add advanced features iteratively
+- Some features may work better on one platform
+
+---
+
+### Gmail Launch Strategy:
+
+**Beta Launch (Month 4):**
+- Invite 50 Gmail users to test
+- Collect feedback on Gmail-specific features
+- Fix Gmail-specific bugs
+
+**Public Launch (Month 5):**
+- Announce Gmail support
+- Re-launch on Product Hunt ("Now with Gmail!")
+- Target Gmail-focused communities
+- Emphasize "works with both" angle
+
+**Marketing:**
+- "Gmail support is here!"
+- "The only AI assistant for both Outlook & Gmail"
+- Case study: "How I manage work (Outlook) and personal (Gmail) emails with one tool"
+
 ### Short-term (Months 1-3):
 - [ ] Implement subscription management
 - [ ] Add usage limits for free tier
@@ -251,9 +469,17 @@
 - [ ] Improve AI prompt engineering
 - [ ] Add email templates feature
 - [ ] Implement custom priority rules
+- [ ] **Start Gmail integration research**
 
 ### Medium-term (Months 4-6):
-- [ ] Gmail integration
+- [ ] **Gmail integration (Phase 1)** ⭐
+  - [ ] Google OAuth authentication
+  - [ ] Gmail API integration
+  - [ ] Email reading and search
+  - [ ] Priority classification for Gmail
+  - [ ] Support both Outlook + Gmail in same app
+- [ ] **Google Calendar integration**
+- [ ] **Google Keep/Docs integration** (alternative to OneNote)
 - [ ] Mobile app (React Native)
 - [ ] Browser extension
 - [ ] Slack/Teams integration
@@ -343,11 +569,13 @@
 ### vs. Gmail AI / Google Workspace:
 
 **Your Advantages:**
-1. **Microsoft Ecosystem** - Native Outlook & OneNote integration
+1. **Multi-Provider Support** - Works with BOTH Outlook AND Gmail (coming soon)
 2. **Desktop App** - Not web-only
 3. **Advanced AI** - More than just smart compose
-4. **Meeting Briefs** - Comprehensive preparation
+4. **Meeting Briefs** - Comprehensive preparation for both Google Calendar and Outlook
 5. **Proactive Insights** - Not just reactive
+6. **Note Integration** - Links emails with OneNote AND Google Docs
+7. **Unified Inbox** - Manage multiple email accounts in one place
 
 ### Target Market Microsoft Copilot Misses:
 
