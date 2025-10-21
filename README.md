@@ -124,6 +124,35 @@ src/
 └── utils/         # Utility functions
 ```
 
+## Troubleshooting
+
+### "Mailbox is inactive or soft-deleted" Error
+
+If you get this error when trying to access emails:
+
+**Solution:** Make sure `MICROSOFT_TENANT_ID=common` in your `.env` file.
+
+**Why:** Using a specific tenant ID can cause authentication as a guest user, which doesn't have a mailbox. The `common` tenant allows authentication with personal Microsoft accounts (outlook.com, hotmail.com) that have real mailboxes.
+
+### Testing Microsoft Graph API Connection
+
+Run the diagnostic test:
+```bash
+powershell -File test-graph-api.ps1
+```
+
+This will show:
+- Your user profile
+- Mailbox settings
+- Whether email access is working
+
+### Clear Cached Tokens
+
+If you need to re-authenticate:
+1. Navigate to: `%APPDATA%\.outlook-ai-agent\`
+2. Delete the `tokens.enc` file
+3. Restart the application
+
 ## Tech Stack
 
 - **Electron** - Desktop app framework
@@ -132,6 +161,7 @@ src/
 - **CopilotKit** - Conversational AI interface
 - **Microsoft Graph API** - Outlook & OneNote integration
 - **SQLite** - Local data storage
+- **DeepSeek AI** - LLM for email analysis and insights
 
 ## License
 
