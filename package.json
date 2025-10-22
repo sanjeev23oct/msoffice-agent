@@ -37,6 +37,8 @@
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "dotenv": "^16.6.1",
     "express": "^4.18.2",
+    "google-auth-library": "^9.0.0",
+    "googleapis": "^128.0.0",
     "openai": "^4.28.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -65,4 +67,5 @@
     "vite-plugin-electron": "^0.28.2",
     "wait-on": "^9.0.1"
   }
+}
 }
