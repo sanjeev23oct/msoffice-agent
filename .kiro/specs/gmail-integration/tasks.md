@@ -51,6 +51,7 @@ This implementation plan breaks down the Gmail integration into discrete, manage
 
 
 
+
   - [ ]* 4.2 Write unit tests for GmailClient
     - Test retry logic with rate limiting
     - Test error handling and normalization

@@ -222,9 +222,41 @@ export default function Dashboard() {
               <span>AI-powered insights</span>
             </div>
           </div>
-          <button className="btn-primary" onClick={handleConnect}>
-            Connect to Microsoft
-          </button>
+          
+          <div style={{ marginTop: '32px', marginBottom: '16px' }}>
+            <p style={{ fontSize: '16px', color: '#6c757d', marginBottom: '24px' }}>
+              Choose your email provider to get started:
+            </p>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button 
+                className="btn-primary" 
+                onClick={handleConnect}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span>📧</span>
+                <span>Connect Outlook</span>
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={() => alert('Gmail integration coming soon!')}
+                style={{ 
+                  background: '#EA4335',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px' 
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#d33426')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#EA4335')}
+              >
+                <span>📮</span>
+                <span>Connect Gmail</span>
+              </button>
+            </div>
+            <p style={{ fontSize: '13px', color: '#999', marginTop: '16px', fontStyle: 'italic' }}>
+              You can connect multiple accounts later
+            </p>
+          </div>
+          
           {error && <div className="error-message">{error}</div>}
         </div>
       </div>
