@@ -56,6 +56,7 @@ This implementation plan breaks down the Gmail integration into discrete, manage
     - Test retry logic with rate limiting
     - Test error handling and normalization
     - Test request queuing
+
     - _Requirements: 11.1, 11.2_
 
 - [ ] 5. Implement Gmail Email Service
@@ -70,12 +71,15 @@ This implementation plan breaks down the Gmail integration into discrete, manage
   - [ ] 5.2 Implement Gmail delta sync using History API
     - Add startMonitoring method with History API polling
     - Implement change detection and callback notifications
+
+
     - Add stopMonitoring method
     - Handle Gmail thread grouping
     - _Requirements: 2.6, 6.1_
 
   - [ ]* 5.3 Write unit tests for GmailEmailService
     - Test email fetching and mapping
+
     - Test search functionality
     - Test delta sync and change detection
     - Test label mapping
@@ -89,6 +93,8 @@ This implementation plan breaks down the Gmail integration into discrete, manage
     - Handle recurring events and time zones
     - Add support for multiple calendars
     - _Requirements: 4.1, 4.2, 4.4_
+
+
 
   - [ ] 6.2 Implement findAvailableSlots
     - Query free/busy information from Calendar API
