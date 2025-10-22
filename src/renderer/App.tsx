@@ -1,13 +1,19 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { CopilotKit } from '@copilotkit/react-core';
+import { CopilotKit, useCopilotReadable } from '@copilotkit/react-core';
 import { CopilotChat } from '@copilotkit/react-ui';
 import '@copilotkit/react-ui/styles.css';
 import './App.css';
 import Dashboard from './components/Dashboard';
 import Settings from './components/Settings';
 import Header from './components/Header';
-import { useAgentActions, useEmailActions } from './hooks/useCopilotActions';
+import {
+  useAgentActions,
+  useEmailActions,
+  useNotesActions,
+  useMeetingActions,
+  useInsightsActions,
+} from './hooks/useCopilotActions';
 
 export default function App() {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -62,9 +68,71 @@ export default function App() {
 }
 
 function AppContent() {
+  const [authStatus, setAuthStatus] = useState({ isAuthenticated: false, userName: '' });
+  const [emailStats, setEmailStats] = useState({ unread: 0, priority: 0, lastChecked: '' });
+
   // Register CopilotKit actions
   useAgentActions();
   useEmailActions();
+  useNotesActions();
+  useMeetingActions();
+  useInsightsActions();
+
+  // Fetch auth status and stats
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/health');
+        const data = await response.json();
+        setAuthStatus({
+          isAuthenticated: data.authenticated || false,
+          userName: data.userName || 'User',
+        });
+      } catch (error) {
+        console.error('Error fetching status:', error);
+      }
+    };
+
+    const fetchEmailStats = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/emails/stats', {
+          method: 'POST',
+        });
+        const data = await response.json();
+        if (data.success) {
+          setEmailStats(data.stats);
+        }
+      } catch (error) {
+        console.error('Error fetching email stats:', error);
+      }
+    };
+
+    fetchStatus();
+    if (authStatus.isAuthenticated) {
+      fetchEmailStats();
+    }
+
+    // Refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchStatus();
+      if (authStatus.isAuthenticated) {
+        fetchEmailStats();
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [authStatus.isAuthenticated]);
+
+  // Provide context to CopilotKit
+  useCopilotReadable({
+    description: 'Current user authentication status and profile',
+    value: authStatus,
+  });
+
+  useCopilotReadable({
+    description: 'Email statistics including unread count and priority emails',
+    value: emailStats,
+  });
 
   return (
     <Router>
@@ -82,7 +150,7 @@ function AppContent() {
           labels={{
             title: 'Outlook-OneNote AI Assistant',
             initial:
-              'Hi! I can help you manage emails, find notes, and prepare for meetings. Try asking:\n\n• "Show me my priority emails"\n• "Search for emails from [name]"\n• "Get my recent emails"',
+              'Hi! I can help you manage emails, find notes, and prepare for meetings. Try asking:\n\n• "Show me my priority emails"\n• "Search notes about [topic]"\n• "Show my upcoming meetings"\n• "Brief me on my next meeting"',
             placeholder: 'Ask me anything...',
           }}
           className="copilot-chat"

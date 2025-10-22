@@ -231,6 +231,10 @@ Be concise and helpful.`,
     return this.insightsService;
   }
 
+  getCorrelationService(): CorrelationService {
+    return this.correlationService;
+  }
+
   isAuthenticated(): boolean {
     return this.authService.isAuthenticated();
   }
