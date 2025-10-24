@@ -210,8 +210,8 @@ export class GmailEmailService implements IEmailProvider {
       accountId: this.accountId,
       accountEmail: accountInfo.email,
       metadata: {
-        labels: message.labelIds,
-        threadId: message.threadId,
+        labels: message.labelIds || undefined,
+        threadId: message.threadId || undefined,
       },
     };
   }

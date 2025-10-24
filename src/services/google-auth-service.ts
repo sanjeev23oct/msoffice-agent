@@ -82,21 +82,19 @@ export class GoogleAuthService implements IAuthProvider {
         prompt: 'consent', // Force consent screen to get refresh token
       });
 
-      console.log('\n📋 Please visit this URL to authorize the application:');
+      console.log('\n=== Google Authentication ===');
+      console.log('Please visit this URL to authorize the application:');
       console.log(authUrl);
-      console.log('\nAfter authorization, you will be redirected to a URL.');
-      console.log('Copy the "code" parameter from that URL and paste it here.\n');
+      console.log('\nAfter authorization, you will be redirected to a URL like:');
+      console.log('http://localhost:3000/auth/google/callback?code=XXXXX');
+      console.log('\nThe authentication will complete automatically once you authorize.');
+      console.log('================================\n');
 
-      // In a real implementation, you would:
-      // 1. Open the URL in a browser
-      // 2. Handle the redirect
-      // 3. Extract the code
-      // For now, we'll use device code flow simulation
-
-      // This is a placeholder - in production, implement proper OAuth flow
-      throw new Error(
-        'OAuth flow not fully implemented. Please implement browser-based OAuth or device code flow.'
-      );
+      // Return a pending state - the actual token exchange will happen via callback
+      return {
+        success: false,
+        error: 'Please complete authentication in your browser. The URL has been printed to the console.',
+      };
     } catch (error: any) {
       throw new ProviderError(
         ProviderErrorType.AUTHENTICATION_FAILED,
@@ -262,7 +260,7 @@ export class GoogleAuthService implements IAuthProvider {
         email: data.email || '',
         name: data.name || data.email || 'Google User',
         providerType: 'google',
-        avatarUrl: data.picture,
+        avatarUrl: data.picture || undefined,
       };
     } catch (error: any) {
       console.error('Error loading account info:', error);

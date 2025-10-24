@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import './Dashboard.css';
+import AccountSelector from './AccountSelector';
+import AccountBadge from './AccountBadge';
 
 interface Email {
   id: string;
@@ -8,6 +10,8 @@ interface Email {
   receivedDateTime: string;
   isRead: boolean;
   priority?: string;
+  providerType?: 'microsoft' | 'google';
+  accountEmail?: string;
 }
 
 interface Meeting {
@@ -37,6 +41,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [userName, setUserName] = useState('User');
   const [lastSync, setLastSync] = useState('');
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
   useEffect(() => {
     checkConnection();
@@ -304,9 +309,12 @@ export default function Dashboard() {
           </h1>
           <p className="sync-status">Last sync: {lastSync || 'Never'}</p>
         </div>
-        <button className="btn-refresh" onClick={loadDashboardData} disabled={loading}>
-          {loading ? '⏳ Syncing...' : '🔄 Refresh'}
-        </button>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <AccountSelector onAccountChange={setSelectedAccountId} />
+          <button className="btn-refresh" onClick={loadDashboardData} disabled={loading}>
+            {loading ? '⏳ Syncing...' : '🔄 Refresh'}
+          </button>
+        </div>
       </div>
 
       <div className="dashboard-grid">
@@ -350,6 +358,9 @@ export default function Dashboard() {
                     <div className="email-header">
                       <span className="priority-icon">{getPriorityIcon(email.priority || 'low')}</span>
                       <span className="email-subject">{email.subject}</span>
+                      {email.providerType && email.accountEmail && (
+                        <AccountBadge providerType={email.providerType} accountEmail={email.accountEmail} />
+                      )}
                     </div>
                     <div className="email-meta">
                       <span className="email-from">From: {email.from.name}</span>

@@ -175,7 +175,7 @@ export class GoogleCalendarService implements ICalendarProvider {
       subject: event.summary || '(No Title)',
       start,
       end,
-      location: event.location,
+      location: event.location || undefined,
       organizer,
       attendees,
       body: event.description || '',
@@ -186,7 +186,7 @@ export class GoogleCalendarService implements ICalendarProvider {
       accountEmail: accountInfo.email,
       metadata: {
         calendarId: 'primary',
-        recurringEventId: event.recurringEventId,
+        recurringEventId: event.recurringEventId || undefined,
         conferenceData: event.conferenceData,
       },
     };

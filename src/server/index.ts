@@ -29,10 +29,14 @@ async function initializeAgent(): Promise<AgentCore> {
   const graphClient = new GraphClient(authService);
   graphClient.initialize();
 
-  const emailService = new EmailService(graphClient);
-  const notesService = new NotesService(graphClient);
-  const calendarService = new CalendarService(graphClient);
+  const emailService = new EmailService(graphClient, authService);
+  const notesService = new NotesService(graphClient, authService);
+  const calendarService = new CalendarService(graphClient, authService);
+  
+  // For MVP: Skip storage initialization (no DB persistence needed)
   const storageService = new StorageService();
+  // await storageService.initialize(); // Commented out for MVP
+  
   const llmService = new LLMService(llmConfig);
 
   // Create agent core
@@ -152,6 +156,280 @@ app.post('/agent/logout', async (req, res) => {
   }
 });
 
+// Store Google auth instance temporarily
+let pendingGoogleAuth: any = null;
+let googleAuthCompleted = false;
+
+// Get Gmail OAuth URL
+app.get('/auth/gmail/url', async (req, res) => {
+  try {
+    const { GoogleAuthService } = await import('../services/google-auth-service');
+    
+    const googleAuthConfig = {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/auth/google/callback',
+    };
+
+    const googleAuth = new GoogleAuthService(googleAuthConfig);
+    await googleAuth.initialize();
+    
+    // Store for callback
+    pendingGoogleAuth = googleAuth;
+    googleAuthCompleted = false;
+    
+    // Generate auth URL
+    const authUrl = googleAuth.getOAuth2Client().generateAuthUrl({
+      access_type: 'offline',
+      scope: [
+        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/calendar.readonly',
+        'https://www.googleapis.com/auth/drive.readonly',
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/userinfo.email',
+      ],
+      prompt: 'consent',
+    });
+    
+    res.json({ authUrl });
+  } catch (error: any) {
+    console.error('Gmail URL generation error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Check Gmail auth status
+app.get('/auth/gmail/status', (req, res) => {
+  res.json({ authenticated: googleAuthCompleted });
+});
+
+// Gmail OAuth callback endpoint
+app.get('/auth/google/callback', async (req, res) => {
+  try {
+    const { code } = req.query;
+    
+    if (!code || !pendingGoogleAuth) {
+      res.status(400).send('Invalid authentication request');
+      return;
+    }
+
+    // Exchange code for tokens
+    const result = await pendingGoogleAuth.handleAuthCode(code as string);
+    
+    if (result.success) {
+      // Mark as completed
+      googleAuthCompleted = true;
+      
+      // Clear pending auth after a delay
+      setTimeout(() => {
+        pendingGoogleAuth = null;
+        googleAuthCompleted = false;
+      }, 5000);
+      
+      // Send success page
+      res.send(`
+        <html>
+          <head>
+            <title>Authentication Successful</title>
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              }
+              .container {
+                background: white;
+                padding: 48px;
+                border-radius: 16px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                text-align: center;
+                max-width: 400px;
+              }
+              .success-icon {
+                font-size: 64px;
+                margin-bottom: 24px;
+              }
+              h1 {
+                color: #28a745;
+                margin: 0 0 16px 0;
+              }
+              p {
+                color: #666;
+                margin: 0 0 24px 0;
+              }
+              .account-info {
+                background: #f8f9fa;
+                padding: 16px;
+                border-radius: 8px;
+                margin-bottom: 24px;
+              }
+              .email {
+                font-weight: 600;
+                color: #333;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="success-icon">✅</div>
+              <h1>Authentication Successful!</h1>
+              <p>Your Gmail account has been connected.</p>
+              <div class="account-info">
+                <div class="email">${result.accountInfo?.email}</div>
+              </div>
+              <p style="font-size: 14px; color: #999;">This window will close automatically...</p>
+            </div>
+            <script>
+              // Auto-close after 2 seconds
+              setTimeout(() => {
+                window.close();
+              }, 2000);
+            </script>
+          </body>
+        </html>
+      `);
+    } else {
+      res.status(400).send(`
+        <html>
+          <head>
+            <title>Authentication Failed</title>
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+              }
+              .container {
+                background: white;
+                padding: 48px;
+                border-radius: 16px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                text-align: center;
+                max-width: 400px;
+              }
+              .error-icon {
+                font-size: 64px;
+                margin-bottom: 24px;
+              }
+              h1 {
+                color: #dc3545;
+                margin: 0 0 16px 0;
+              }
+              p {
+                color: #666;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="error-icon">❌</div>
+              <h1>Authentication Failed</h1>
+              <p>${result.error || 'Unknown error occurred'}</p>
+              <p style="font-size: 14px; color: #999; margin-top: 24px;">Please try again.</p>
+            </div>
+          </body>
+        </html>
+      `);
+    }
+  } catch (error: any) {
+    console.error('Gmail callback error:', error);
+    res.status(500).send('Authentication error: ' + error.message);
+  }
+});
+
+// Get all accounts
+app.get('/api/accounts', async (req, res) => {
+  try {
+    const accounts = [];
+    
+    // Get Outlook account
+    if (agentCore && agentCore.isAuthenticated()) {
+      try {
+        const authService = agentCore.getAuthService();
+        const accountInfo = authService.getAccountInfo();
+        accounts.push(accountInfo);
+      } catch (error) {
+        console.error('Error getting Outlook account:', error);
+      }
+    }
+    
+    // Get Gmail account
+    try {
+      const { GoogleAuthService } = await import('../services/google-auth-service');
+      
+      const googleAuthConfig = {
+        clientId: process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+        redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/auth/google/callback',
+      };
+
+      const googleAuth = new GoogleAuthService(googleAuthConfig, 'gmail-main');
+      await googleAuth.initialize();
+      
+      if (googleAuth.isAuthenticated()) {
+        const accountInfo = googleAuth.getAccountInfo();
+        accounts.push(accountInfo);
+      }
+    } catch (error) {
+      console.error('Error getting Gmail account:', error);
+    }
+    
+    res.json({ success: true, accounts });
+  } catch (error: any) {
+    console.error('Error getting accounts:', error);
+    res.json({ success: true, accounts: [] });
+  }
+});
+
+// Test Gmail emails endpoint
+app.get('/api/gmail/test', async (req, res) => {
+  try {
+    const { GoogleAuthService } = await import('../services/google-auth-service');
+    const { GmailEmailService } = await import('../services/gmail-email-service');
+    
+    const googleAuthConfig = {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/auth/google/callback',
+    };
+
+    const googleAuth = new GoogleAuthService(googleAuthConfig, 'gmail-test');
+    await googleAuth.initialize();
+    
+    if (!googleAuth.isAuthenticated()) {
+      res.json({ success: false, error: 'Not authenticated. Please sign in first.' });
+      return;
+    }
+    
+    const gmailService = new GmailEmailService(googleAuth);
+    const emails = await gmailService.getRecentEmails(10);
+    
+    res.json({ 
+      success: true, 
+      count: emails.length,
+      emails: emails.map(e => ({
+        id: e.id,
+        subject: e.subject,
+        from: e.from,
+        receivedDateTime: e.receivedDateTime,
+        providerType: e.providerType,
+        accountEmail: e.accountEmail,
+      }))
+    });
+  } catch (error: any) {
+    console.error('Gmail test error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get agent instance (for CopilotKit actions)
 app.get('/agent/instance', (req, res) => {
   if (!agentCore) {
@@ -220,20 +498,53 @@ app.get('/api/test-graph', async (req, res) => {
 // Email API endpoints
 app.post('/api/emails/priority', async (req, res) => {
   try {
-    if (!agentCore) {
-      res.json({ success: true, emails: [] });
-      return;
-    }
-    if (!agentCore.isAuthenticated()) {
-      res.json({ success: true, emails: [] });
-      return;
-    }
     const { limit = 10 } = req.body;
-    const emails = await agentCore.getPriorityEmails();
-    res.json({ success: true, emails: emails.slice(0, limit) });
+    const allEmails = [];
+    
+    // Get Outlook emails if agent is initialized
+    if (agentCore && agentCore.isAuthenticated()) {
+      try {
+        const outlookEmails = await agentCore.getPriorityEmails();
+        allEmails.push(...outlookEmails);
+      } catch (error) {
+        console.error('Error getting Outlook emails:', error);
+      }
+    }
+    
+    // Get Gmail emails if authenticated
+    try {
+      const { GoogleAuthService } = await import('../services/google-auth-service');
+      const { GmailEmailService } = await import('../services/gmail-email-service');
+      
+      const googleAuthConfig = {
+        clientId: process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+        redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/auth/google/callback',
+      };
+
+      const googleAuth = new GoogleAuthService(googleAuthConfig, 'gmail-main');
+      await googleAuth.initialize();
+      
+      if (googleAuth.isAuthenticated()) {
+        const gmailService = new GmailEmailService(googleAuth);
+        const gmailEmails = await gmailService.getRecentEmails(limit);
+        allEmails.push(...gmailEmails);
+      }
+    } catch (error) {
+      console.error('Error getting Gmail emails:', error);
+    }
+    
+    // Sort by date, most recent first
+    allEmails.sort((a, b) => {
+      const dateA = new Date(a.receivedDateTime).getTime();
+      const dateB = new Date(b.receivedDateTime).getTime();
+      return dateB - dateA;
+    });
+    
+    res.json({ success: true, emails: allEmails.slice(0, limit) });
   } catch (error: any) {
     console.error('Error getting priority emails:', error);
-    res.json({ success: true, emails: [] }); // Return empty array instead of error
+    res.json({ success: true, emails: [] });
   }
 });
 

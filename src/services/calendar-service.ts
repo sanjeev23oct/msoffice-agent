@@ -1,16 +1,24 @@
 import { GraphClient } from './graph-client';
 import { ICalendarService, Meeting, Attendee, TimeSlot } from '../models/calendar.types';
+import { ICalendarProvider, MeetingWithProvider } from '../models/provider.types';
 import { EmailAddress } from '../models/email.types';
+import { AuthenticationService } from './authentication-service';
 
-export class CalendarService implements ICalendarService {
+export class CalendarService implements ICalendarService, ICalendarProvider {
+  readonly providerType = 'microsoft' as const;
+  readonly accountId: string;
+
   private graphClient: GraphClient;
-  private meetingCache: Map<string, Meeting> = new Map();
+  private authService: AuthenticationService;
+  private meetingCache: Map<string, MeetingWithProvider> = new Map();
 
-  constructor(graphClient: GraphClient) {
+  constructor(graphClient: GraphClient, authService: AuthenticationService) {
     this.graphClient = graphClient;
+    this.authService = authService;
+    this.accountId = authService.accountId;
   }
 
-  async getUpcomingMeetings(days: number): Promise<Meeting[]> {
+  async getUpcomingMeetings(days: number): Promise<MeetingWithProvider[]> {
     const client = this.graphClient.getClient();
 
     const startDate = new Date();
@@ -36,7 +44,7 @@ export class CalendarService implements ICalendarService {
     });
   }
 
-  async getMeetingById(id: string): Promise<Meeting> {
+  async getMeetingById(id: string): Promise<MeetingWithProvider> {
     // Check cache first
     if (this.meetingCache.has(id)) {
       return this.meetingCache.get(id)!;
@@ -85,7 +93,9 @@ export class CalendarService implements ICalendarService {
     return meeting.attendees;
   }
 
-  private mapToMeeting(rawEvent: any): Meeting {
+  private mapToMeeting(rawEvent: any): MeetingWithProvider {
+    const accountInfo = this.authService.getAccountInfo();
+    
     return {
       id: rawEvent.id,
       subject: rawEvent.subject || '(No Subject)',
@@ -97,6 +107,9 @@ export class CalendarService implements ICalendarService {
       body: rawEvent.body?.content || '',
       isOnlineMeeting: rawEvent.isOnlineMeeting || false,
       onlineMeetingUrl: rawEvent.onlineMeeting?.joinUrl,
+      providerType: 'microsoft',
+      accountId: this.accountId,
+      accountEmail: accountInfo.email,
     };
   }
 

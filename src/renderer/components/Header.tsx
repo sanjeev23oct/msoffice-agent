@@ -30,8 +30,65 @@ export default function Header() {
   };
 
   const handleAddGmail = async () => {
-    alert('Gmail integration is in progress. This feature will be available soon!');
-    setShowAccountMenu(false);
+    try {
+      setShowAccountMenu(false);
+      
+      // Get the OAuth URL from backend
+      const response = await fetch('http://localhost:3001/auth/gmail/url', {
+        method: 'GET',
+      });
+      
+      const data = await response.json();
+      
+      if (data.authUrl) {
+        // Open OAuth URL in a popup window
+        const width = 600;
+        const height = 700;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+        
+        const popup = window.open(
+          data.authUrl,
+          'Google Sign In',
+          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`
+        );
+        
+        // Poll for authentication completion
+        const checkAuth = setInterval(async () => {
+          try {
+            const statusResponse = await fetch('http://localhost:3001/auth/gmail/status');
+            const statusData = await statusResponse.json();
+            
+            if (statusData.authenticated) {
+              clearInterval(checkAuth);
+              if (popup && !popup.closed) {
+                popup.close();
+              }
+              alert('✅ Gmail account connected successfully!');
+              window.location.reload();
+            } else if (popup && popup.closed) {
+              clearInterval(checkAuth);
+              alert('Authentication cancelled');
+            }
+          } catch (error) {
+            console.error('Error checking auth status:', error);
+          }
+        }, 1000);
+        
+        // Stop checking after 5 minutes
+        setTimeout(() => {
+          clearInterval(checkAuth);
+          if (popup && !popup.closed) {
+            popup.close();
+          }
+        }, 300000);
+      } else {
+        alert(`Failed to start authentication: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Gmail auth error:', error);
+      alert('Error connecting Gmail account. Please try again.');
+    }
   };
 
   return (

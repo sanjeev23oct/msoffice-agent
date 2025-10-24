@@ -54,7 +54,22 @@ export class StorageService implements IStorageService {
         received_date INTEGER,
         importance TEXT,
         is_read INTEGER,
+        provider_type TEXT,
+        account_id TEXT,
         created_at INTEGER
+      )
+    `);
+
+    // Accounts table
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS accounts (
+        id TEXT PRIMARY KEY,
+        provider_type TEXT NOT NULL,
+        email TEXT NOT NULL,
+        name TEXT,
+        avatar_url TEXT,
+        created_at INTEGER NOT NULL,
+        last_sync INTEGER
       )
     `);
 
@@ -87,16 +102,24 @@ export class StorageService implements IStorageService {
 
     // Create indexes
     this.db.run('CREATE INDEX IF NOT EXISTS idx_emails_date ON emails(received_date)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_emails_account ON emails(account_id)');
     this.db.run('CREATE INDEX IF NOT EXISTS idx_analysis_priority ON email_analysis(priority_level)');
   }
 
-  async saveEmail(email: Email): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+  async saveEmail(email: Email | any): Promise<void> {
+    // For MVP: Skip if DB not initialized (no persistence needed)
+    if (!this.db) {
+      console.log('Storage not initialized - skipping email save (MVP mode)');
+      return;
+    }
+
+    const providerType = (email as any).providerType || 'microsoft';
+    const accountId = (email as any).accountId || 'microsoft-default';
 
     this.db.run(
       `INSERT OR REPLACE INTO emails 
-       (id, subject, from_address, body, received_date, importance, is_read, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, subject, from_address, body, received_date, importance, is_read, provider_type, account_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         email.id,
         email.subject,
@@ -105,6 +128,8 @@ export class StorageService implements IStorageService {
         email.receivedDateTime.getTime(),
         email.importance,
         email.isRead ? 1 : 0,
+        providerType,
+        accountId,
         Date.now(),
       ]
     );
@@ -129,7 +154,11 @@ export class StorageService implements IStorageService {
   }
 
   async saveAnalysis(emailId: string, analysis: EmailAnalysis): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    // For MVP: Skip if DB not initialized (no persistence needed)
+    if (!this.db) {
+      console.log('Storage not initialized - skipping analysis save (MVP mode)');
+      return;
+    }
 
     this.db.run(
       `INSERT OR REPLACE INTO email_analysis 
@@ -155,7 +184,11 @@ export class StorageService implements IStorageService {
   }
 
   async getAnalysis(emailId: string): Promise<EmailAnalysis | null> {
-    if (!this.db) throw new Error('Database not initialized');
+    // For MVP: Return null if DB not initialized (no persistence needed)
+    if (!this.db) {
+      console.log('Storage not initialized - skipping analysis lookup (MVP mode)');
+      return null;
+    }
 
     const result = this.db.exec(
       'SELECT * FROM email_analysis WHERE email_id = ?',

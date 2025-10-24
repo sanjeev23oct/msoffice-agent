@@ -1,16 +1,36 @@
 import * as msal from '@azure/msal-node';
-import { IAuthenticationService, AuthResult, AuthConfig } from '../models/auth.types';
+import { IAuthenticationService, AuthConfig, AuthResult } from '../models/auth.types';
+import { IAuthProvider, AuthResult as ProviderAuthResult, AccountInfo } from '../models/provider.types';
 import { TokenStorage } from '../utils/token-storage';
 
 export class AuthenticationService implements IAuthenticationService {
+  readonly providerType = 'microsoft' as const;
+  readonly accountId: string;
+
   private msalClient: msal.PublicClientApplication | null = null;
   private tokenStorage: TokenStorage;
   private config: AuthConfig;
   private currentAccount: msal.AccountInfo | null = null;
 
-  constructor(config: AuthConfig) {
+  constructor(config: AuthConfig, accountId: string = 'microsoft-default') {
     this.config = config;
+    this.accountId = accountId;
     this.tokenStorage = new TokenStorage();
+  }
+
+  // IAuthProvider adapter - returns this service as an IAuthProvider
+  asAuthProvider(): IAuthProvider {
+    return {
+      providerType: this.providerType,
+      accountId: this.accountId,
+      initialize: () => this.initialize(),
+      login: () => this.loginAsProvider(),
+      logout: () => this.logout(),
+      getAccessToken: (scopes: string[]) => this.getAccessToken(scopes),
+      refreshToken: () => this.refreshToken(),
+      isAuthenticated: () => this.isAuthenticated(),
+      getAccountInfo: () => this.getAccountInfo(),
+    };
   }
 
   async initialize(): Promise<void> {
@@ -64,7 +84,7 @@ export class AuthenticationService implements IAuthenticationService {
 
       const response = await this.msalClient.acquireTokenByDeviceCode(deviceCodeRequest);
 
-      if (!response) {
+      if (!response || !response.account) {
         throw new Error('Failed to acquire token');
       }
 
@@ -82,6 +102,30 @@ export class AuthenticationService implements IAuthenticationService {
     } catch (error) {
       console.error('Login error:', error);
       throw new Error('Authentication failed. Please try again.');
+    }
+  }
+
+  // IAuthProvider-compatible login method
+  async loginAsProvider(): Promise<ProviderAuthResult> {
+    try {
+      const result = await this.login();
+      
+      const accountInfo: AccountInfo = {
+        id: result.account.homeAccountId,
+        email: result.account.username,
+        name: result.account.name,
+        providerType: 'microsoft',
+      };
+
+      return {
+        success: true,
+        accountInfo,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Authentication failed. Please try again.',
+      };
     }
   }
 
@@ -140,5 +184,19 @@ export class AuthenticationService implements IAuthenticationService {
 
   isAuthenticated(): boolean {
     return this.currentAccount !== null;
+  }
+
+  // IAuthProvider interface methods
+  getAccountInfo(): AccountInfo {
+    if (!this.currentAccount) {
+      throw new Error('Not authenticated');
+    }
+
+    return {
+      id: this.currentAccount.homeAccountId,
+      email: this.currentAccount.username,
+      name: this.currentAccount.name || this.currentAccount.username,
+      providerType: 'microsoft',
+    };
   }
 }

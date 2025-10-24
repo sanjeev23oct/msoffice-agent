@@ -181,17 +181,19 @@ Be concise and helpful.`,
 
   async getPriorityEmails(): Promise<Email[]> {
     try {
+      // For MVP: Just return recent emails without storage/analysis
       const recentEmails = await this.emailService.getRecentEmails(50);
-      const priorityEmails: Email[] = [];
-
-      for (const email of recentEmails) {
-        const analysis = await this.storageService.getAnalysis(email.id);
-        if (analysis && analysis.priorityLevel === 'high') {
-          priorityEmails.push(email);
-        }
-      }
-
-      return priorityEmails;
+      return recentEmails;
+      
+      // TODO: Re-enable when storage is needed
+      // const priorityEmails: Email[] = [];
+      // for (const email of recentEmails) {
+      //   const analysis = await this.storageService.getAnalysis(email.id);
+      //   if (analysis && analysis.priorityLevel === 'high') {
+      //     priorityEmails.push(email);
+      //   }
+      // }
+      // return priorityEmails;
     } catch (error) {
       console.error('Error getting priority emails:', error);
       return [];

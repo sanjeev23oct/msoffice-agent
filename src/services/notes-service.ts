@@ -7,14 +7,22 @@ import {
   NoteContent,
   Image,
 } from '../models/note.types';
+import { INotesProvider, NoteWithProvider } from '../models/provider.types';
+import { AuthenticationService } from './authentication-service';
 
-export class NotesService implements INotesService {
+export class NotesService implements INotesService, INotesProvider {
+  readonly providerType = 'microsoft' as const;
+  readonly accountId: string;
+
   private graphClient: GraphClient;
+  private authService: AuthenticationService;
   private notebookCache: Map<string, Notebook> = new Map();
-  private noteCache: Map<string, Note> = new Map();
+  private noteCache: Map<string, NoteWithProvider> = new Map();
 
-  constructor(graphClient: GraphClient) {
+  constructor(graphClient: GraphClient, authService: AuthenticationService) {
     this.graphClient = graphClient;
+    this.authService = authService;
+    this.accountId = authService.accountId;
   }
 
   async getNotebooks(): Promise<Notebook[]> {
@@ -54,7 +62,7 @@ export class NotesService implements INotesService {
     }));
   }
 
-  async searchNotes(query: string): Promise<Note[]> {
+  async searchNotes(query: string): Promise<NoteWithProvider[]> {
     const client = this.graphClient.getClient();
 
     // Search across all pages
@@ -66,7 +74,7 @@ export class NotesService implements INotesService {
         .get()
     );
 
-    const notes: Note[] = [];
+    const notes: NoteWithProvider[] = [];
 
     for (const rawPage of response.value) {
       const note = await this.mapToNote(rawPage);
@@ -95,15 +103,16 @@ export class NotesService implements INotesService {
     };
   }
 
-  async findNotesByEntity(entityName: string, entityType: string): Promise<Note[]> {
+  async findNotesByEntity(entityName: string, entityType: string): Promise<NoteWithProvider[]> {
     // For now, use simple search by entity name
     // In the future, this could be enhanced with semantic search
     return this.searchNotes(entityName);
   }
 
-  private async mapToNote(rawPage: any): Promise<Note> {
+  private async mapToNote(rawPage: any): Promise<NoteWithProvider> {
     // Get section info to find notebook
     const client = this.graphClient.getClient();
+    const accountInfo = this.authService.getAccountInfo();
     let notebookId = '';
 
     try {
@@ -124,6 +133,9 @@ export class NotesService implements INotesService {
       sectionId: rawPage.parentSection?.id || '',
       notebookId: notebookId,
       tags: [], // OneNote tags would need separate API call
+      providerType: 'microsoft',
+      accountId: this.accountId,
+      accountEmail: accountInfo.email,
     };
   }
 

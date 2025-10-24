@@ -160,8 +160,8 @@ export class GoogleDocsService implements INotesProvider {
       accountId: this.accountId,
       accountEmail: accountInfo.email,
       metadata: {
-        documentId: file.id,
-        mimeType: file.mimeType,
+        documentId: file.id || undefined,
+        mimeType: file.mimeType || undefined,
         notebookName,
         sectionName: notebookName,
       },

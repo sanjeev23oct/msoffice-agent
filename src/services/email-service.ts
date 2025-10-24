@@ -1,17 +1,26 @@
 import { GraphClient } from './graph-client';
 import { IEmailService, Email, EmailAddress } from '../models/email.types';
+import { IEmailProvider, EmailWithProvider } from '../models/provider.types';
+import { AuthenticationService } from './authentication-service';
 
-export class EmailService implements IEmailService {
+export class EmailService implements IEmailService, IEmailProvider {
+  readonly providerType = 'microsoft' as const;
+  readonly accountId: string;
+
   private graphClient: GraphClient;
+  private authService: AuthenticationService;
   private isMonitoring: boolean = false;
   private monitoringInterval: NodeJS.Timeout | null = null;
   private pollInterval: number;
   private deltaLink: string | null = null;
   private changeCallbacks: Array<(email: Email) => void> = [];
-  private emailCache: Map<string, Email> = new Map();
+  private providerChangeCallbacks: Array<(email: EmailWithProvider) => void> = [];
+  private emailCache: Map<string, EmailWithProvider> = new Map();
 
-  constructor(graphClient: GraphClient, pollInterval: number = 30000) {
+  constructor(graphClient: GraphClient, authService: AuthenticationService, pollInterval: number = 30000) {
     this.graphClient = graphClient;
+    this.authService = authService;
+    this.accountId = authService.accountId;
     this.pollInterval = pollInterval;
   }
 
@@ -75,7 +84,7 @@ export class EmailService implements IEmailService {
     }
   }
 
-  async getRecentEmails(count: number): Promise<Email[]> {
+  async getRecentEmails(count: number): Promise<EmailWithProvider[]> {
     const client = this.graphClient.getClient();
 
     const response = await this.graphClient.executeWithRetry(() =>
@@ -89,10 +98,10 @@ export class EmailService implements IEmailService {
     return response.value.map((rawEmail: any) => this.mapToEmail(rawEmail));
   }
 
-  async getEmailById(id: string): Promise<Email> {
+  async getEmailById(id: string): Promise<EmailWithProvider> {
     // Check cache first
     if (this.emailCache.has(id)) {
-      return this.emailCache.get(id)!;
+      return this.emailCache.get(id)! as EmailWithProvider;
     }
 
     const client = this.graphClient.getClient();
@@ -106,7 +115,7 @@ export class EmailService implements IEmailService {
     return email;
   }
 
-  async searchEmails(query: string): Promise<Email[]> {
+  async searchEmails(query: string): Promise<EmailWithProvider[]> {
     const client = this.graphClient.getClient();
 
     const response = await this.graphClient.executeWithRetry(() =>
@@ -121,11 +130,15 @@ export class EmailService implements IEmailService {
     return response.value.map((rawEmail: any) => this.mapToEmail(rawEmail));
   }
 
-  subscribeToChanges(callback: (email: Email) => void): void {
-    this.changeCallbacks.push(callback);
+  subscribeToChanges(callback: (email: EmailWithProvider) => void): void {
+    this.providerChangeCallbacks.push(callback);
+    // Also support old callback format for backward compatibility
+    this.changeCallbacks.push(callback as any);
   }
 
-  private mapToEmail(rawEmail: any): Email {
+  private mapToEmail(rawEmail: any): EmailWithProvider {
+    const accountInfo = this.authService.getAccountInfo();
+    
     return {
       id: rawEmail.id,
       subject: rawEmail.subject || '(No Subject)',
@@ -138,6 +151,12 @@ export class EmailService implements IEmailService {
       importance: rawEmail.importance || 'normal',
       isRead: rawEmail.isRead || false,
       conversationId: rawEmail.conversationId || '',
+      providerType: 'microsoft',
+      accountId: this.accountId,
+      accountEmail: accountInfo.email,
+      metadata: {
+        categories: rawEmail.categories,
+      },
     };
   }
 
