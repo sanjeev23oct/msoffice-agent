@@ -389,6 +389,43 @@ app.get('/api/accounts', async (req, res) => {
   }
 });
 
+// AI email analysis endpoint
+app.post('/api/emails/analyze', async (req, res) => {
+  try {
+    const { emailIds } = req.body;
+    const { AIInboxService } = await import('../services/ai-inbox-service');
+    
+    const aiService = new AIInboxService(llmService);
+    const analyses: any[] = [];
+    
+    // Get emails and analyze them
+    // For now, return mock data - will integrate with real emails
+    res.json({ success: true, analyses });
+  } catch (error: any) {
+    console.error('Email analysis error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// AI chat endpoint
+app.post('/api/ai/chat', async (req, res) => {
+  try {
+    const { message } = req.body;
+    const { AIInboxService } = await import('../services/ai-inbox-service');
+    
+    const aiService = new AIInboxService(llmService);
+    
+    // Get recent emails for context
+    const emails: any[] = [];
+    
+    const response = await aiService.chatWithAI(message, emails);
+    res.json({ success: true, response });
+  } catch (error: any) {
+    console.error('AI chat error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Test Gmail emails endpoint
 app.get('/api/gmail/test', async (req, res) => {
   try {

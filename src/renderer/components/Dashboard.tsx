@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import './Dashboard.css';
 import AccountSelector from './AccountSelector';
 import AccountBadge from './AccountBadge';
+import AIChatWidget from './AIChatWidget';
 
 interface Email {
   id: string;
@@ -478,6 +479,8 @@ export default function Dashboard() {
           </p>
         </div>
       )}
+      {/* AI Chat Widget */}
+      <AIChatWidget />
     </div>
   );
 }
